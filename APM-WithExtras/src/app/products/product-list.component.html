@@ -1,24 +1,32 @@
+<div *ngIf="(isLoading$ | async)">Loading...</div>
 <div class="card">
   <div class="card-header">
-    {{pageTitle}}
+    {{ pageTitle }}
   </div>
 
-  <div class="card-body"
-       *ngIf="vm$ | async as vm">
+  <div class="card-body" *ngIf="vm$ | async as vm">
     <div class="container">
       <div class="row justify-content-between">
         <div class="col-3">
-          <select class="form-control"
-                  (change)="onSelected($event.target.value)">
+          <select
+            class="form-control"
+            (change)="onSelected($event.target.value)"
+          >
             <option value="0">- Display All -</option>
-            <option *ngFor="let category of vm.categories"
-                    [value]="category.id">{{ category.name }}</option>
+            <option
+              *ngFor="let category of vm.categories"
+              [value]="category.id"
+              >{{ category.name }}</option
+            >
           </select>
         </div>
         <div class="col-2">
-          <button type="button"
-                  class="btn btn-outline-secondary"
-                  (click)="onAdd()">Add Product
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="onAdd()"
+          >
+            Add Product
           </button>
           <!-- <button type="button"
                   class="btn btn-outline-secondary"
@@ -29,8 +37,7 @@
     </div>
 
     <div class="table-responsive">
-      <table class="table mb-0"
-             *ngIf="vm.products">
+      <table class="table mb-0" *ngIf="vm.products">
         <thead>
           <tr>
             <th>Product</th>
@@ -46,27 +53,31 @@
             <td>{{ product.productName }}</td>
             <td>{{ product.productCode }}</td>
             <td>{{ product.category }}</td>
-            <td>{{ product.price | currency:"USD":"symbol":"1.2-2" }}</td>
+            <td>{{ product.price | currency: "USD":"symbol":"1.2-2" }}</td>
             <td>{{ product.quantityInStock }}</td>
             <td>
-              <button type="button"
-                      class="btn btn-outline-primary mx-2"
-                      (click)="onUpdate(product)">Update
+              <button
+                type="button"
+                class="btn btn-outline-primary mx-2"
+                (click)="onUpdate(product)"
+              >
+                Update
               </button>
-              <button type="button"
-                      class="btn btn-outline-warning"
-                      (click)="onDelete(product)">Delete
+              <button
+                type="button"
+                class="btn btn-outline-warning"
+                (click)="onDelete(product)"
+              >
+                Delete
               </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
   </div>
 </div>
 
-<div class="alert alert-danger"
-     *ngIf="errorMessage$ | async as errorMessage">
+<div class="alert alert-danger" *ngIf="errorMessage$ | async as errorMessage">
   {{ errorMessage }}
 </div>

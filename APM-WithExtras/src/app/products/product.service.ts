@@ -4,7 +4,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, combineLatest, EMPTY, from, merge, Subject, throwError, of, forkJoin } from 'rxjs';
 import {
   catchError, filter, map, mergeMap, scan, shareReplay, tap, toArray, switchMap,
-  mergeAll, max, reduce, concatMap, delay
+  mergeAll, max, reduce, concatMap, delay, finalize
 } from 'rxjs/operators';
 
 import { Product, ProductClass, StatusCode } from './product';
@@ -20,21 +20,46 @@ export class ProductService {
   private productsUrl = 'api/products';
   private suppliersUrl = this.supplierService.suppliersUrl;
 
-  // All products
-  products$ = this.http.get<Product[]>(this.productsUrl)
-    .pipe(
-      tap(data => console.log('Products', JSON.stringify(data))),
-      catchError(this.handleError)
-    );
+  // // All products
+  // products$ = this.http.get<Product[]>(this.productsUrl)
+  //   .pipe(
+
+  //     tap(data => console.log('Products', JSON.stringify(data))),
+  //     catchError(this.handleError),
+  //   );
+
+ // Action stream for loading
+  private isLoadingSubject = new BehaviorSubject<boolean>(true);
+  isLoadingAction$ = this.isLoadingSubject.asObservable();
+
+
+
+  // products$ = this.isLoadingSubject
+  //   .pipe(
+    //     // tap(_ => this.isLoadingSubject.next(true)),
+    //     mergeMap(() => this.http.get<Product[]>(this.productsUrl)
+    //       .pipe(
+  //         tap(data => console.log('Products', JSON.stringify(data))),
+  //         tap(_ => this.isLoadingSubject.next(false)),
+  //         catchError(this.handleError),
+  //       )
+  //     ));
+
+
+
+
 
   // To support a refresh feature
   private refresh = new BehaviorSubject<boolean>(true);
 
-  products2$ = this.refresh
-    .pipe(
+  products$ = this.refresh
+  .pipe(
+        tap(_ => this.isLoadingSubject.next(true)),
       mergeMap(() => this.http.get<Product[]>(this.productsUrl)
         .pipe(
           tap(data => console.log('Products', JSON.stringify(data))),
+                    tap(_ => this.isLoadingSubject.next(false)),
+
           catchError(this.handleError)
         )
       ));
@@ -46,6 +71,8 @@ export class ProductService {
     this.products$,
     this.productCategoryService.productCategories$
   ]).pipe(
+    tap(() => this.isLoadingSubject.next(true)),
+      tap(() => console.log('start get')),
     map(([products, categories]) =>
       products.map(product => ({
         ...product,
@@ -54,7 +81,11 @@ export class ProductService {
         searchKey: [product.productName]
       }) as Product)
     ),
-    shareReplay(1)
+    tap(() => console.log('end get')),
+
+    shareReplay(1),
+    finalize(() => this.isLoadingSubject.next(false))
+
   );
 
   // Action Stream for adding products to the Observable
@@ -159,9 +190,9 @@ export class ProductService {
       tap(suppliers => console.log('product suppliers', JSON.stringify(suppliers))),
     );
 
-  // Action stream for loading
-  private isLoadingSubject = new BehaviorSubject<boolean>(false);
-  isLoadingAction$ = this.isLoadingSubject.asObservable();
+  // // Action stream for loading
+  // private isLoadingSubject = new BehaviorSubject<boolean>(false);
+  // isLoadingAction$ = this.isLoadingSubject.asObservable();
 
   // Suppliers for the selected product with the loading action stream
   selectedProductSuppliers4$ = this.selectedProduct$
@@ -325,11 +356,18 @@ export class ProductService {
     this.productsWithCategory$,
     this.productModifiedAction$
       .pipe(
+
+        tap(() => console.log('productWithCruds start')),
+        tap(() => this.isLoadingSubject.next(true)),
+
         concatMap(product => this.saveProduct(product)),
-      ))
-    .pipe(
-      scan((products: Product[], product: Product) => this.modifyProducts(products, product)),
-      shareReplay(1)
+        ))
+        .pipe(
+          scan((products: Product[], product: Product) => this.modifyProducts(products, product)),
+          tap(() => console.log('productWithCruds end')),
+          tap(() => this.isLoadingSubject.next(false)),
+          shareReplay(1),
+
     );
 
   // Support methods

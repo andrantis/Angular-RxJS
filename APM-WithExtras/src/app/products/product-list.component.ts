@@ -1,64 +1,85 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit } from '@angular/core';
 
-import { combineLatest, BehaviorSubject, EMPTY, Subject } from 'rxjs';
+import { combineLatest, BehaviorSubject, EMPTY, Subject, Observable } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { ProductService } from './product.service';
 import { ProductCategoryService } from '../product-categories/product-category.service';
 import { Product } from './product';
+import { ProductCategory } from '../product-categories/product-category';
 
 @Component({
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProductListComponent {
+export class ProductListComponent implements OnInit {
   pageTitle = 'Product List';
+
   private errorMessageSubject = new Subject<string>();
   errorMessage$ = this.errorMessageSubject.asObservable();
 
-  // Action stream
   private categorySelectedSubject = new BehaviorSubject<number>(0);
   categorySelectedAction$ = this.categorySelectedSubject.asObservable();
 
-  // Merge Data stream with Action stream
-  // To filter to the selected category
-  products$ = combineLatest([
-    this.productService.productsWithCRUD$,
-    this.categorySelectedAction$
-  ])
-    .pipe(
-      map(([products, selectedCategoryId]) =>
-        products.filter(product =>
-          selectedCategoryId ? product.categoryId === selectedCategoryId : true
-        )),
-      catchError(err => {
-        this.errorMessageSubject.next(err);
-        return EMPTY;
-      })
-    );
+  products$: Observable<Product[] | [Product[], number]>;
+  categories$: Observable<ProductCategory[]>;
+  vm$: Observable<{products: Product[] | [Product[], number], categories: ProductCategory[]}>;
 
-  // Categories for drop down list
-  categories$ = this.productCategoryService.productCategories$
-    .pipe(
-      catchError(err => {
-        this.errorMessageSubject.next(err);
-        return EMPTY;
-      })
-    );
-
-  // Combine the streams for the view
-  vm$ = combineLatest([
-    this.products$,
-    this.categories$
-  ])
-    .pipe(
-      map(([products, categories]) =>
-        ({ products, categories }))
-    );
+ // Whether data is currently loading
+      // NOTE: Could also display a loading indicator icon while loading.
+      isLoading$ = this.productService.isLoadingAction$;
 
   constructor(private productService: ProductService,
-              private productCategoryService: ProductCategoryService) { }
+              private productCategoryService: ProductCategoryService) {
+
+                console.log('constr');
+ // Action stream
+
+      // Merge Data stream with Action stream
+      // To filter to the selected category
+      this.products$ = combineLatest([
+        this.productService.productsWithCRUD$,
+        this.categorySelectedAction$
+      ])
+        .pipe(
+          map(([products, selectedCategoryId]) =>
+            products.filter(product =>
+              selectedCategoryId ? product.categoryId === selectedCategoryId : true
+            )),
+          catchError(err => {
+            this.errorMessageSubject.next(err);
+            return EMPTY;
+          })
+        );
+
+      // Categories for drop down list
+      this.categories$ = this.productCategoryService.productCategories$
+        .pipe(
+          catchError(err => {
+            this.errorMessageSubject.next(err);
+            return EMPTY;
+          })
+        );
+
+      // Combine the streams for the view
+      this.vm$ = combineLatest([
+        this.products$,
+        this.categories$
+      ])
+        .pipe(
+          map(([products, categories]) =>
+            ({ products, categories }))
+        );
+              }
+
+
+    ngOnInit() {
+console.log('nginit');
+this.onRefresh();
+
+
+    }
 
   onAdd(): void {
     this.productService.addProduct();
